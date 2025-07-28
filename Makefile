@@ -49,8 +49,7 @@ freeze:
 
 run:
 	@echo "$(ORANGE)🚀 Avvio backend FastAPI$(NC)"
-	RAILWAY=$(RAILWAY) TOKEN=$(TOKEN) ADMIN_CHAT_ID=$(ADMIN_CHAT_ID) \
-	$(VENV_DIR)/bin/uvicorn scripts.backend:app --host 0.0.0.0 --port $(PORT) --reload
+	python3 scripts/backend.py
 
 test:
 	@echo "$(ORANGE)📤 Invio richiesta JSON di test al backend$(NC)"
