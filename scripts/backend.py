@@ -2,14 +2,15 @@ import os
 import tempfile
 import json
 import anyio
+import requests
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from telegram import Bot
 from dotenv import load_dotenv
 from pathlib import Path
-from markdown import markdown
-from weasyprint import HTML
+import markdown2
+import pdfkit
 
 # Carica variabili da .env
 load_dotenv()
@@ -49,17 +50,24 @@ class PDFHandler(BaseHTTPRequestHandler):
             for key, value in data.items():
                 label = key.replace("_", " ").capitalize()
                 markdown_content += f"- **{label}**: {value}\n"
+            html = markdown2.markdown(markdown_content)
 
             # 2. 🧾 Salva Markdown in file temporaneo
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".md", mode='w', encoding='utf-8') as md_file:
-                md_path = Path(md_file.name)
-                md_file.write(markdown_content)
-
-            # 3. 🖨️ Converti Markdown in HTML, poi in PDF
-            html_content = markdown(markdown_content)
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as pdf_file:
                 pdf_path = Path(pdf_file.name)
-                HTML(string=html_content).write_pdf(str(pdf_path))
+                pdfkit.from_string(html, str(pdf_path))
+
+            # 3. 🖨️ Converti Markdown in HTML, poi in PDF
+            html = markdown2.markdown(markdown_content)
+            response = requests.post(
+                "https://api.html2pdf.app/v1/generate",
+                json={
+                    "html": html,
+                    "apiKey": "TUA_API_KEY"
+                }
+            )
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as f:
+                f.write(response.content)
 
             # 4. 📤 Invia PDF su Telegram
             async def send_pdf():
