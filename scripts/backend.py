@@ -52,35 +52,22 @@ class PDFHandler(BaseHTTPRequestHandler):
                 markdown_content += f"- **{label}**: {value}\n"
             html = markdown2.markdown(markdown_content)
 
-            # 2. 🧾 Salva Markdown in file temporaneo
+            # 2. Crea PDF dal file HTML
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as pdf_file:
                 pdf_path = Path(pdf_file.name)
                 pdfkit.from_string(html, str(pdf_path))
 
-            # 3. 🖨️ Converti Markdown in HTML, poi in PDF
-            html = markdown2.markdown(markdown_content)
-            response = requests.post(
-                "https://api.html2pdf.app/v1/generate",
-                json={
-                    "html": html,
-                    "apiKey": "TUA_API_KEY"
-                }
-            )
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as f:
-                f.write(response.content)
-
-            # 4. 📤 Invia PDF su Telegram
+            # 3. 📤 Invia PDF su Telegram
             async def send_pdf():
                 async with bot:
                     await bot.send_document(chat_id=CHAT_ID, document=pdf_path.open("rb"), filename=f"{file_stem}.pdf")
 
             anyio.run(send_pdf)
 
-            # 5. 🧹 Pulizia
-            md_path.unlink()
+            # 4. 🧹 Pulizia
             pdf_path.unlink()
 
-            # 6. ✅ Risposta HTTP
+            # 5. ✅ Risposta HTTP
             self.send_response(200)
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Content-type", "application/json")
