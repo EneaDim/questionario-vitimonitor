@@ -42,26 +42,26 @@ class PDFHandler(BaseHTTPRequestHandler):
             file_stem = f"{nome}_{email_prefix}"
             file_name = f"{file_stem}.md"
 
-            # 1. 📝 Crea contenuto Markdown
-            markdown_content = "# 📋 Questionario Vitimonitor\n\n"
+            # 1. 📝 Crea contenuto testo semplice (con emoji, ma senza Markdown)
+            text_content = "📋 Questionario Vitimonitor\n\n"
             for key, value in data.items():
                 label = key.replace("_", " ").capitalize()
-                markdown_content += f"- **{label}**: {value}\n"
+                text_content += f"- {label}: {value}\n"
 
-            # 2. 💾 Scrive contenuto in file temporaneo .md
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".md", mode='w', encoding='utf-8') as md_file:
-                md_path = Path(md_file.name)
-                md_file.write(markdown_content)
+            # 2. 💾 Scrive contenuto in file temporaneo .txt
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8') as txt_file:
+                txt_path = Path(txt_file.name)
+                txt_file.write(text_content)
 
-            # 3. 📤 Invia file Markdown su Telegram
-            async def send_md():
+            # 3. 📤 Invia file TXT su Telegram
+            async def send_txt():
                 async with bot:
-                    await bot.send_document(chat_id=CHAT_ID, document=md_path.open("rb"), filename=file_name)
+                    await bot.send_document(chat_id=CHAT_ID, document=txt_path.open("rb"), filename=f"{file_stem}.txt")
 
-            anyio.run(send_md)
+            anyio.run(send_txt)
 
-            # 4. 🧹 Pulizia
-            md_path.unlink()
+            # (opzionale) elimina il file dopo l'invio
+            txt_path.unlink()
 
             # 5. ✅ Risposta HTTP
             self.send_response(200)
@@ -69,7 +69,7 @@ class PDFHandler(BaseHTTPRequestHandler):
             self.send_header("Content-type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"status": "OK"}).encode())
-    
+
         except Exception as e:
             print("❌ Errore:", str(e))
             self.send_response(500)
