@@ -4,13 +4,9 @@ import json
 import anyio
 import requests
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
 from telegram import Bot
 from dotenv import load_dotenv
 from pathlib import Path
-import markdown2
-import pdfkit
 
 # Carica variabili da .env
 load_dotenv()
@@ -44,28 +40,28 @@ class PDFHandler(BaseHTTPRequestHandler):
             email = data.get("email", "anonimo@example.com")
             email_prefix = email.split("@")[0].strip().replace(" ", "_")
             file_stem = f"{nome}_{email_prefix}"
+            file_name = f"{file_stem}.md"
 
             # 1. 📝 Crea contenuto Markdown
-            markdown_content = f"# 📋 Questionario Vitimonitor\n\n"
+            markdown_content = "# 📋 Questionario Vitimonitor\n\n"
             for key, value in data.items():
                 label = key.replace("_", " ").capitalize()
                 markdown_content += f"- **{label}**: {value}\n"
-            html = markdown2.markdown(markdown_content)
 
-            # 2. Crea PDF dal file HTML
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as pdf_file:
-                pdf_path = Path(pdf_file.name)
-                pdfkit.from_string(html, str(pdf_path))
+            # 2. 💾 Scrive contenuto in file temporaneo .md
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".md", mode='w', encoding='utf-8') as md_file:
+                md_path = Path(md_file.name)
+                md_file.write(markdown_content)
 
-            # 3. 📤 Invia PDF su Telegram
-            async def send_pdf():
+            # 3. 📤 Invia file Markdown su Telegram
+            async def send_md():
                 async with bot:
-                    await bot.send_document(chat_id=CHAT_ID, document=pdf_path.open("rb"), filename=f"{file_stem}.pdf")
+                    await bot.send_document(chat_id=CHAT_ID, document=md_path.open("rb"), filename=file_name)
 
-            anyio.run(send_pdf)
+            anyio.run(send_md)
 
             # 4. 🧹 Pulizia
-            pdf_path.unlink()
+            md_path.unlink()
 
             # 5. ✅ Risposta HTTP
             self.send_response(200)
@@ -73,7 +69,7 @@ class PDFHandler(BaseHTTPRequestHandler):
             self.send_header("Content-type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"status": "OK"}).encode())
-
+    
         except Exception as e:
             print("❌ Errore:", str(e))
             self.send_response(500)
